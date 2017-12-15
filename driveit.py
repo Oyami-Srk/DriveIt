@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+
 import argparse
 import glob
 from multiprocessing.pool import ThreadPool
