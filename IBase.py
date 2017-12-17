@@ -36,6 +36,7 @@ class IBase(metaclass=ABCMeta):
             for chapter in chapters[1]:
                 chaps.append({'Title': chapter[0], 'Link': chapter[1], 'Images': []})
             self.__details__['Gropes'].append({'Title': chapters[0], 'Chapters':chaps})
+            self.Details = self.__details__
 
     def __str__(self):
         return '< manga \"%(title)s\" on %(site)s >' % \
