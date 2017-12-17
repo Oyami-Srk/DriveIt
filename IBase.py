@@ -5,6 +5,7 @@
 
 from abc import ABCMeta, abstractmethod
 import re
+import os
 import requests
 from bs4 import BeautifulSoup
 
@@ -25,7 +26,16 @@ class IBase(metaclass=ABCMeta):
         self.__page_source__ = self.GetData(pageUrl).decode("utf-8")
         self.__soup__ = BeautifulSoup(self.__page_source__, 'html.parser')
         self.__title__ = self.GetTitle()
-        self.__details__ = self.GetDetails()
+        self.__chapters__ = self.GetChapters()
+        self.__details__ = {
+            'Title': self.__title__,
+            'Gropes': []
+        }
+        for chapters in self.__chapters__:
+            chaps = []
+            for chapter in chapters[1]:
+                chaps.append({'Title': chapter[0], 'Link': chapter[1], 'Images': []})
+            self.__details__['Gropes'].append({'Title': chapters[0], 'Chapters':chaps})
 
     def __str__(self):
         return '< manga \"%(title)s\" on %(site)s >' % \
@@ -44,8 +54,43 @@ class IBase(metaclass=ABCMeta):
 
         return requests.get(url, headers=header).content
 
+    def RemoveChar(self, str, list=['\n', '\\', '*', '?', '<', '>', '|', ':', '"']):
+        for c in list:
+            str = str.replace(c, '')
+        return str
+
+    def MakeDir(self, path_set, parent = ''):
+        if parent != '':
+            Path = os.path.join(parent)
+        else:
+            Path = ''
+        for dir in path_set:
+            Path = os.path.join(Path, self.RemoveChar(dir))
+        if not os.path.exists(Path):
+            try:
+                os.makedirs(Path)
+            except FileExistsError as e:
+                pass
+        return Path
+
     @abstractmethod
     def GetTitle(self):
+        pass
+
+    @abstractmethod
+    def GetChapters(self):
+        pass
+
+    @abstractmethod
+    def GetChapterDetail(self, chapter):
+        pass
+
+    @abstractmethod
+    def GetDetails(self, grope_id, chapter_id):
+        pass
+
+    @abstractmethod
+    def DownloadImage(self, path, grope_id, chapter_id, image_id):
         pass
 
 
