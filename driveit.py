@@ -1,83 +1,149 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 
-import argparse
-import glob
+import re
+import os
 from multiprocessing.pool import ThreadPool
 
-from base import SharedBase
+from IBase import IBase
 
+class Downloader:
 
-def main_loop(ref_box, download_range):
-    ref_box = ref_box[-download_range:]
+    def __init__(self, url, thread_limit = 1, path = '', chapter_ranges = [], disp=True):
+        if re.match(r'http://manhua.dmzj.com/[a-z]+?', url):
+            from Base import manhua_dmzj
+            self.manga = manhua_dmzj(url)
+        else:
+            raise Exception("Not yet supported!")
 
-    for ref_tuple in ref_box:
-        parent_title, parent_link = ref_tuple
-        total_page = website_object.get_page_info(parent_link)
-        jobs = list()
-        for page in range(1, total_page + 1):
-            jobs.append((parent_title, parent_link, page))
-        pool_size = download_limit
-        pool = ThreadPool(processes=pool_size)
-        pool.map(loop_thread, jobs)
+        self.limit = thread_limit
+        if len(self.manga.Details['Gropes']) > len(chapter_ranges):
+            current_len = len(chapter_ranges)
+            for i in range(len(self.manga.Details['Gropes']) - current_len):
+                chapter_ranges.append(len(self.manga.Details['Gropes'][current_len + i]['Chapters']))
+        self.skip = []
+        for i in range(len(self.manga.Details['Gropes'])):
+            if chapter_ranges[i] == 0 or chapter_ranges[i] > len(self.manga.Details['Gropes'][i]['Chapters']):
+                chapter_ranges[i] = len(self.manga.Details['Gropes'][i]['Chapters'])
+            elif chapter_ranges[i] < 0:
+                self.skip.append(i)
+                chapter_ranges[i] = 0
+
+        if disp:
+            count = 0
+            for grope in self.manga.Details['Gropes']:
+                print('漫画 %s 的 %s 部分将要获取的章节数为 %d' % \
+                  (self.manga.Details['Title'], grope['Title'], chapter_ranges[count]))
+                count = count + 1
+        self.ranges = chapter_ranges
+        self.disp = disp
+        self.parent = path
+
+    def Fetch_Details(self):
+        if self.disp:
+            print('开始按照设定的线程数获取图片链接...')
+        jobs = []
+        for grope_id in range(len(self.manga.Details['Gropes'])):
+            if self.skip != []:
+                if grope_id in self.skip:
+                    continue;
+            chapter_count = len(self.manga.Details['Gropes'][grope_id]['Chapters'])
+            for chapter_id in range(chapter_count - self.ranges[grope_id], chapter_count):
+                jobs.append((grope_id, chapter_id))
+
+        pool = ThreadPool(processes=self.limit)
+        pool.map(self.fetch_imagelink, jobs)
         pool.close()
         pool.join()
+        if self.disp:
+            print('图片链接已获取')
+
+    def Download(self):
+        if self.disp:
+            print('下载开始...')
+        jobs = []
+        for grope_id in range(len(self.manga.Details['Gropes'])):
+            if self.skip != []:
+                if grope_id in self.skip:
+                    continue;
+            chapter_count = len(self.manga.Details['Gropes'][grope_id]['Chapters'])
+            for chapter_id in range(chapter_count - self.ranges[grope_id], chapter_count):
+                for image_id in range(len(self.manga.Details['Gropes'][grope_id]\
+                                          ['Chapters'][chapter_id]['Images'])):
+                    jobs.append((grope_id, chapter_id, image_id))
+        pool = ThreadPool(processes=self.limit)
+        pool.map(self.fetch_image, jobs)
+        pool.close()
+        pool.join()
+        if self.disp:
+            print('下载完成')
 
 
-def loop_thread(args):
-    parent_title, parent_link, page = args
-    vague_path = website_object.get_path(comic_name, parent_title, page) + '*'
-    if glob.glob(vague_path):
-        print('%s page %d already existed.' % (parent_title, page))
-    else:
-        try:
-            link = website_object.get_image_link(parent_link, page)
-            website_object.down(comic_name, parent_link, link, parent_title, page)
-            print('%s page %d has been downloaded successfully' % (parent_title, page))
-        except:
-            print('Error occurred when downloading %s, Page %d.' % (parent_title, page))
+    def fetch_image(self, args):
+        grope_id, chapter_id, image_id = args
+        if self.manga.DownloadImage(grope_id, chapter_id, image_id, self.parent):
+            if self.disp:
+                print('[%s] (%s) 已获取 %s 的第 %d 张图片' %
+                      (self.manga.Details['Title'],
+                       self.manga.Details['Gropes'][grope_id]['Title'],
+                       self.manga.Details['Gropes'][grope_id]['Chapters'][chapter_id]['Title'],
+                       image_id + 1)
+                )
+        elif self.disp:
+            print('[%s] (%s) 已存在 %s 的第 %d 张图片 - 跳过下载' %
+                  (self.manga.Details['Title'],
+                   self.manga.Details['Gropes'][grope_id]['Title'],
+                   self.manga.Details['Gropes'][grope_id]['Chapters'][chapter_id]['Title'],
+                   image_id + 1)
+            )
+
+    def fetch_imagelink(self, args):
+        grope_id, chapter_id = args
+        self.manga.GetDetails(grope_id, chapter_id)
+        if self.disp:
+            print('[%s] (%s) 已获取 %s 的图片链接(%d)' %
+                  (self.manga.Details['Title'],
+                   self.manga.Details['Gropes'][grope_id]['Title'],
+                   self.manga.Details['Gropes'][grope_id]['Chapters'][chapter_id]['Title'],
+                   len(self.manga.Details['Gropes'][grope_id]['Chapters'][chapter_id]['Images']) + 1)
+            )
 
 
 def argparser():
     parser = argparse.ArgumentParser(description='A multithreading comic crawler.')
-    parser.add_argument('url', help='URL of the comic\'s cover page')
-    parser.add_argument('-l', '--latest', help='Download latest x chapters from origin')
-    parser.add_argument('-t', '--thread', help='Number of threads. Default to be 1')
+    parser.add_argument('url', help='URL of the comic\'s cover page', nargs='?', default = '')
+    parser.add_argument('-l', '--latest', help='Download latest x chapters to each grope from origin.\n0 means all chapters, -1 means ignore this grope. \nDefault to be a list filled with 0.', nargs='*', type=int, default = [])
+    parser.add_argument('-t', '--thread', help='Number of threads. Default to be 1', type=int, default=1)
+    parser.add_argument('-p', '--path', help='Path of saving comic', type=str, default='')
+    parser.add_argument('-d', '--details', help='Output Details in json', action="store_true", default=False)
+    parser.add_argument('-x', '--suicide', help='Delete this script', action="store_true", default=False)
+    parser.add_argument('-s', '--silent', help='Do not display output', action="store_true", default=False)
     return parser
 
 
-parser = argparser()
-args = parser.parse_args()
-user_input_url = args.url
-if args.thread:
-    download_limit = int(args.thread)
-else:
-    download_limit = 1
-if args.latest:
-    fetch_latest = int(args.latest)
-else:
-    fetch_latest = 0
+if __name__ == '__main__':
+    import argparse
+    parser = argparser()
+    args = parser.parse_args()
+    isdisp = True
+    if args.suicide:
+        import shutil
+        shutil.rmtree(os.getcwd())
+        exit()
 
-base = SharedBase(user_input_url)
-try:
-    if base.get_site_name() is 'dm5':
-        from sites import DM5 as SiteClass
-    elif base.get_site_name() is 'ck101':
-        from sites import Ck101 as SiteClass
-    elif base.get_site_name() is 'dmzj':
-        from sites import Dmzj as SiteClass
-    elif base.get_site_name() is 'manhua_dmzj':
-        from sites import manhua_Dmzj as SiteClass
-    elif base.get_site_name() is 'ehentai':
-        from sites import Ehentai as SiteClass
-except NameError:
-    print('Website illegal or nor supported yet.')
-    exit()
-try:
-    website_object = SiteClass(user_input_url)
-    comic_name = website_object.get_name()
-    ref_box = website_object.get_parent_info()
-    print('%s, total %d chapters detected.' % (comic_name, len(ref_box)))
-    main_loop(ref_box, fetch_latest)
-except ConnectionError as e:
-    print('%s, consider using a proxy or a VPN.' % e)
+    if args.details or args.silent:
+        isdisp = False
+
+    if args.url == '':
+        print('Url is required!')
+        exit()
+    a = Downloader(args.url, chapter_ranges=args.latest, path=args.path, thread_limit=args.thread, disp=isdisp)
+    a.Fetch_Details()
+
+    if args.details:
+        import json
+        details = a.manga.Details
+        print(json.dumps(details, indent=4))
+        exit()
+
+    a.Download()

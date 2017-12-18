@@ -6,6 +6,7 @@
 from IBase import IBase
 
 import requests
+import os
 import re
 from bs4 import BeautifulSoup
 import execjs
@@ -59,9 +60,13 @@ class manhua_dmzj(IBase):
     def DownloadImage(self, grope_id, chapter_id, image_id, parent=''):
         url = 'http://images.dmzj.com/' + \
               self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Images'][image_id]
+        filename = self.MakeDir((self.__details__['Title'],
+                                 self.__details__['Gropes'][grope_id]['Title'],
+                                 self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Title']), parent) +\
+                                 '/' + str(image_id) + '.' + url.split('.')[-1]
+        if os.path.exists(filename):
+            return False
         img = self.GetData(url, 'http://manhua.dmzj.com' + self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Link'])
-        with open(self.MakeDir((self.__details__['Title'],
-                               self.__details__['Gropes'][grope_id]['Title'],
-                                self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Title']), parent) + '/' + \
-                  str(image_id) + '.' + url.split('.')[-1], 'wb+') as file:
+        with open(filename, 'wb+') as file:
             file.write(img)
+        return True
