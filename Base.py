@@ -56,12 +56,12 @@ class manhua_dmzj(IBase):
     def GetDetails(self, grope_id, chapter_id):
         self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Images'] = self.GetChapterDetail(self.__chapters__[grope_id][1][chapter_id])
 
-    def DownloadImage(self, grope_id, chapter_id, image_id):
+    def DownloadImage(self, grope_id, chapter_id, image_id, parent=''):
         url = 'http://images.dmzj.com/' + \
               self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Images'][image_id]
         img = self.GetData(url, 'http://manhua.dmzj.com' + self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Link'])
-        with open(self.MakeDir(self.__details__['Title'],
+        with open(self.MakeDir((self.__details__['Title'],
                                self.__details__['Gropes'][grope_id]['Title'],
-                               self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Title']) + '/' + \
+                                self.__details__['Gropes'][grope_id]['Chapters'][chapter_id]['Title']), parent) + '/' + \
                   str(image_id) + '.' + url.split('.')[-1], 'wb+') as file:
             file.write(img)

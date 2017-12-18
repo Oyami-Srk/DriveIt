@@ -32,23 +32,57 @@ class Downloader:
             print('漫画 %s 的 %s 部分的章节数为 %d' % \
                   (self.manga.Details['Title'], grope['Title'], chapter_ranges[count] + 1))
             count = count + 1
+        self.skip = []
 
+    def Fetch_Details(self, skip_grope = []):
+        self.skip = skip_grope
         print('开始按照设定的线程数获取图片链接...')
-
         jobs = []
         for grope_id in range(len(self.manga.Details['Gropes'])):
+            if skip_grope != []:
+                if grope_id in skip_grope:
+                    continue;
             for chapter_id in range(len(self.manga.Details['Gropes'][grope_id]['Chapters'])):
                 jobs.append((grope_id, chapter_id))
 
-        pool = ThreadPool(processes=thread_limit)
+        pool = ThreadPool(processes=self.limit)
         pool.map(self.fetch_imagelink, jobs)
         pool.close()
         pool.join()
+        print('图片链接已获取')
+
+    def Download(self):
+        print('下载开始...')
+        jobs = []
+        for grope_id in range(len(self.manga.Details['Gropes'])):
+            if self.skip != []:
+                if grope_id in self.skip:
+                    continue;
+            for chapter_id in range(len(self.manga.Details['Gropes'][grope_id]['Chapters'])):
+                for image_id in range(len(self.manga.Details['Gropes'][grope_id]\
+                                          ['Chapters'][chapter_id]['Images'])):
+                    jobs.append((grope_id, chapter_id, image_id))
+        pool = ThreadPool(processes=self.limit)
+        pool.map(self.fetch_image, jobs)
+        pool.close()
+        pool.join()
+        print('下载完成')
+
+
+    def fetch_image(self, args):
+        grope_id, chapter_id, image_id = args
+        self.manga.DownloadImage(grope_id, chapter_id, image_id)
+        print('[%s] (%s) 已获取 %s 的第 %d 张图片' %
+              (self.manga.Details['Title'],
+               self.manga.Details['Gropes'][grope_id]['Title'],
+               self.manga.Details['Gropes'][grope_id]['Chapters'][chapter_id]['Title'],
+               len(self.manga.Details['Gropes'][grope_id]['Chapters'][chapter_id]['Images']) + 1)
+        )
 
     def fetch_imagelink(self, args):
         grope_id, chapter_id = args
         self.manga.GetDetails(grope_id, chapter_id)
-        print('[%s] 已获取 %s : %s 的图片链接(%d)' %
+        print('[%s] (%s) 已获取 %s 的图片链接(%d)' %
               (self.manga.Details['Title'],
                self.manga.Details['Gropes'][grope_id]['Title'],
                self.manga.Details['Gropes'][grope_id]['Chapters'][chapter_id]['Title'],
@@ -58,4 +92,7 @@ class Downloader:
 
 
 if __name__ == '__main__':
-    Downloader('http://manhua.dmzj.com/kuangduzhiyuan')
+    a = Downloader('http://manhua.dmzj.com/kuangduzhiyuan')
+    a.Fetch_Details([0,1,2])
+    a.Download()
+

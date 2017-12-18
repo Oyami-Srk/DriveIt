@@ -91,7 +91,7 @@ class IBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def DownloadImage(self, path, grope_id, chapter_id, image_id):
+    def DownloadImage(self, grope_id, chapter_id, image_id, parent=''):
         pass
 
 
