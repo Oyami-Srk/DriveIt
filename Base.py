@@ -70,3 +70,10 @@ class manhua_dmzj(IBase):
         with open(filename, 'wb+') as file:
             file.write(img)
         return True
+
+    def GetCover(self, path=''):
+        img_link = self.__soup__.findAll('div', class_=re.compile('anim_intro_ptext.*'))[0].img['src']
+        img = self.GetData(img_link, 'http://manhua.dmzj.com/')
+        with open(self.MakeDir((self.__details__['Title'], ''), path) + 'cover' + '.' + img_link.split('.')[-1], 'wb+') as file:
+            file.write(img)
+

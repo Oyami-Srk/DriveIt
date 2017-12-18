@@ -3,6 +3,7 @@
 
 import re
 import os
+import sys
 from multiprocessing.pool import ThreadPool
 
 from IBase import IBase
@@ -78,6 +79,8 @@ class Downloader:
         if self.disp:
             print('下载完成')
 
+    def DownloadCover(self):
+        self.manga.GetCover(self.parent)
 
     def fetch_image(self, args):
         grope_id, chapter_id, image_id = args
@@ -129,14 +132,14 @@ if __name__ == '__main__':
     if args.suicide:
         import shutil
         shutil.rmtree(os.getcwd())
-        exit()
+        sys.exit(0)
 
     if args.details or args.silent:
         isdisp = False
 
     if args.url == '':
         print('Url is required!')
-        exit()
+        sys.exit(0)
     a = Downloader(args.url, chapter_ranges=args.latest, path=args.path, thread_limit=args.thread, disp=isdisp)
     a.Fetch_Details()
 
@@ -144,6 +147,8 @@ if __name__ == '__main__':
         import json
         details = a.manga.Details
         print(json.dumps(details, indent=4))
-        exit()
+        sys.exit(0)
 
     a.Download()
+    a.DownloadCover()
+

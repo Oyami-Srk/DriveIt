@@ -94,4 +94,8 @@ class IBase(metaclass=ABCMeta):
     def DownloadImage(self, grope_id, chapter_id, image_id, parent=''):
         pass
 
+    @abstractmethod
+    def GetCover(self, path=''):
+        pass
+
 
