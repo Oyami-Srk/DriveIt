@@ -17,7 +17,17 @@ class manhua_dmzj(IBase):
 
     def __init__(self, pageUrl):
         IBase.__init__(self, pageUrl)
-        #
+        soup_box = self.__soup__.findAll('div', class_=re.compile('anim-main_list.*'))[0].table
+        for tr in soup_box.findAll('tr'):
+            if re.match('作者', tr.th.text):
+                self.__author__ = tr.td.text.rstrip()
+        soup_box = self.__soup__.findAll('div', class_=re.compile('line_height_content.*'))[0]
+        for br in soup_box.findAll('br'):
+            br.replace_with('\n')
+        self.__summary__ = soup_box.get_text(strip=True, separator='\n').split('\n')[0]
+        self.__details__['Author'] = self.__author__
+        self.__details__['Summary'] = self.__summary__
+
 
     def GetTitle(self):
         soup_box = self.__soup__.findAll('h1')

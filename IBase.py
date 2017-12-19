@@ -14,7 +14,6 @@ class IBase(metaclass=ABCMeta):
 
     def __init__(self, pageUrl):
         self.__agent_desktop__ = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36'
-        self
         self.__url__ = pageUrl
         if re.match(r'http://www.dmzj.com/info/.+?.html', pageUrl):
             self.__site__ = 'dmzj'
@@ -27,8 +26,12 @@ class IBase(metaclass=ABCMeta):
         self.__soup__ = BeautifulSoup(self.__page_source__, 'html.parser')
         self.__title__ = self.GetTitle()
         self.__chapters__ = self.GetChapters()
+        self.__author__ = 'DriveIt'
+        self.__summary__ = 'Downloaded by DriveIt\nhttps://github.com/Oyami-Srk/DriveIt'
         self.__details__ = {
             'Title': self.__title__,
+            'Author': self.__author__,
+            'Summary': self.__summary__,
             'Gropes': []
         }
         for chapters in self.__chapters__:
