@@ -79,6 +79,14 @@ class Downloader:
         if self.disp:
             print('下载完成')
 
+    def SaveXML(self):
+        if self.disp:
+            print('生成适用于Kindle Comic Converter的XML文件')
+            xml_file = '<?xml version="1.0" encoding="utf-8"?><ComicInfo xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><Writer>' + self.manga.__author__ + '</Writer><Summary>' + self.manga.__summary__ + '</Summary></ComicInfo>'
+            with open(self.manga.MakeDir((self.manga.__details__['Title'], ''), self.parent) + 'ComicInfo.xml','w+') as file:
+                file.write(xml_file)
+
+
     def DownloadCover(self):
         self.manga.GetCover(self.parent)
 
@@ -151,4 +159,5 @@ if __name__ == '__main__':
 
     a.Download()
     a.DownloadCover()
+    a.SaveXML()
 
